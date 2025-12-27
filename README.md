@@ -1,163 +1,212 @@
-# ToDo и URL Shortener
+# Final Task – FastAPI Microservices with Docker
 
-Два микросервиса на FastAPI с SQLite базами данных, упакованные в Docker контейнеры.
+Учебный проект по дисциплине «Разработка информационных систем».
 
-### ToDo-сервис
-API для управления списком задач. Каждая задача имеет:
-- `id` - уникальный идентификатор
-- `title` - название задачи
-- `description` - описание (опционально)
-- `completed` - статус выполнения
+Проект состоит из **двух независимых микросервисов**, реализованных на FastAPI, использующих SQLite для хранения данных и упакованных в Docker-контейнеры с использованием именованных Docker-томов.
 
-### URL Shortener сервис
-Сервис для сокращения URL-адресов. Создает короткие ссылки и обеспечивает редирект на оригинальные URL.
+---
 
-## Локальный запуск
+## Описание сервисов
 
 ### ToDo-сервис
 
-```bash
-cd todo_app
+REST API для управления списком задач (CRUD).
 
-python -m venv .venv
-source .venv/bin/activate  
+Возможности:
 
-pip install -r requirements.txt
+* создание задачи
+* получение списка всех задач
+* получение задачи по ID
+* обновление задачи
+* удаление задачи
 
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
+Данные хранятся в SQLite базе данных, расположенной в директории `/app/data`, подключаемой как Docker-том.
+
+---
+
+### Short URL сервис
+
+Сервис для сокращения URL-адресов.
+
+Возможности:
+
+* создание короткой ссылки для длинного URL
+* перенаправление по короткому идентификатору
+* получение информации о сокращённой ссылке
+
+Данные о ссылках хранятся в SQLite базе данных в директории `/app/data`.
+
+---
+
+## Структура проекта
+
+```
+final-task-isd/
+├── todo_app/
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .dockerignore
+├── shorturl_app/
+│   ├── Dockerfile
+│   ├── main.py
+│   ├── requirements.txt
+│   └── .dockerignore
+└── README.md
 ```
 
-Сервис будет доступен по адресу: http://localhost:8000
+---
 
-### URL Shortener 
+## API Endpoints
 
-```bash
-cd shorturl_app
+### ToDo-сервис
 
-python -m venv .venv
-source venv/bin/activate 
+* `POST /items` — создать задачу
+* `GET /items` — получить список всех задач
+* `GET /items/{item_id}` — получить задачу по ID
+* `PUT /items/{item_id}` — обновить задачу
+* `DELETE /items/{item_id}` — удалить задачу
 
-pip install -r requirements.txt
+### Short URL сервис
 
-uvicorn main:app --reload --host 0.0.0.0 --port 8001
-```
+* `POST /shorten` — создать короткую ссылку
+* `GET /{short_id}` — редирект на оригинальный URL
+* `GET /stats/{short_id}` — получить информацию о ссылке
 
-Сервис будет доступен по адресу: http://localhost:8001
+---
 
-## Запуск с Docker
+## Документация API
 
-### Шаг 1: Создание именованных томов
+Каждый сервис предоставляет автоматическую документацию Swagger:
+
+* ToDo-сервис: `http://localhost:8000/docs`
+* Short URL сервис: `http://localhost:8001/docs`
+
+---
+
+## Запуск с использованием Docker
+
+### 1. Создание именованных томов
 
 ```bash
 docker volume create todo_data
 docker volume create shorturl_data
 ```
 
-### Шаг 2: Сборка Docker образов
+### 2. Сборка Docker-образов
 
 ```bash
-docker build -t todo-service ./todo_app
-docker build -t shorturl-service ./shorturl_app
+docker build -t baraboshkina/final-task-isd:todo ./todo_app
+docker build -t baraboshkina/final-task-isd:shorturl ./shorturl_app
 ```
 
-### Шаг 3: Запуск контейнеров
+### 3. Запуск контейнеров
+
+> ToDo-сервис использует порт 8000 внутри контейнера, Short URL сервис — порт 80.
 
 ```bash
-docker run -d -p 8000:80 -v todo_data:/app/data --name todo-app todo-service
-docker run -d -p 8001:80 -v shorturl_data:/app/data --name shorturl-app shorturl-service
+docker run -d -p 8000:8000 -v todo_data:/app/data baraboshkina/final-task-isd:todo
+docker run -d -p 8001:80 -v shorturl_data:/app/data baraboshkina/final-task-isd:shorturl
 ```
 
-## API документация
+---
 
-После запуска сервисов автоматическая интерактивная документация доступна по адресам:
-
-- ToDo сервис: http://localhost:8000/docs
-- URL Shortener сервис: http://localhost:8001/docs
-
-## Примеры использования
+## Проверка работоспособности
 
 ### ToDo-сервис
 
-#### Создание задачи
-```bash
-curl -X POST "http://localhost:8000/items" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Купить молоко",
-    "description": "В магазине на углу",
+* создать задачу: `POST /items`
+* получить список задач: `GET /items`
+* перезапустить контейнер и убедиться, что данные сохранены
+
+### Short URL сервис
+
+* создать короткую ссылку: `POST /shorten`
+* перейти по короткой ссылке: `GET /{short_id}`
+* получить статистику: `GET /stats/{short_id}`
+* перезапустить контейнер и убедиться, что данные сохранены
+
+---
+
+## Используемые технологии
+
+* Python 3.11
+* FastAPI
+* SQLite
+* Docker / Docker Desktop (WSL2)
+
+
+---
+
+## API
+
+### ToDo-сервис
+
+Базовый URL: `http://localhost:8000`
+
+Сервис реализует CRUD-операции для списка задач.  
+Данные хранятся в SQLite и сохраняются между перезапусками контейнера.
+
+#### Эндпоинты
+
+- `POST /items`  
+  Создание новой задачи.
+
+  Тело запроса:
+  ```json
+  {
+    "title": "string",
+    "description": "string (optional)",
     "completed": false
-  }'
-```
+  }
+- `GET /items`
+  Получение списка всех задач.
 
-Ответ:
-```json
-{
-  "id": 1,
-  "title": "Купить молоко",
-  "description": "В магазине на углу",
-  "completed": false
-}
-```
+- `GET /items/{item_id}`
+Получение задачи по идентификатору.
 
-#### Получение всех задач
-```bash
-curl http://localhost:8000/items
-```
+- `PUT /items/{item_id}`
+Обновление задачи.
+Можно передавать только изменяемые поля.
 
-#### Получение задачи по ID
-```bash
-curl http://localhost:8000/items/1
-```
+- `DELETE /items/{item_id}`
+Удаление задачи.
 
-#### Обновление задачи
-```bash
-curl -X PUT "http://localhost:8000/items/1" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "completed": true
-  }'
-```
+---
 
-#### Удаление задачи
-```bash
-curl -X DELETE http://localhost:8000/items/1
-```
+### Short URL сервис
+Базовый URL: `http://localhost:8001`
 
-### URL Shortener сервис
+Сервис предназначен для сокращения URL-адресов и хранения информации о них в SQLite.
 
-#### Создание короткой ссылки
-```bash
-curl -X POST "http://localhost:8001/shorten" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "url": "https://www.example.com/very/long/url"
-  }'
-```
+#### Эндпоинты
+- `POST /shorten`
+Создание короткой ссылки.
 
-Ответ:
-```json
-{
-  "short_id": "aB3xY9",
-  "short_url": "/aB3xY9",
-  "full_url": "https://www.example.com/very/long/url"
-}
-```
+  Тело запроса:
+  ```json
+  {
+    "url": "https://example.com"
+  }
+Ответ содержит короткий идентификатор и сокращённый URL.
 
-#### Редирект по короткой ссылке
-```bash
-curl -L http://localhost:8001/aB3xY9
-```
+- `GET /{short_id}`
+Перенаправление на исходный URL по короткому идентификатору.
 
-#### Получение информации о ссылке
-```bash
-curl http://localhost:8001/stats/aB3xY9
-```
+- `GET /stats/{short_id}`
+Получение информации о сокращённой ссылке (оригинальный URL и время создания).
 
-Ответ:
-```json
-{
-  "short_id": "aB3xY9",
-  "full_url": "https://www.example.com/very/long/url",
-  "created_at": "2025-12-23T10:30:45.123456"
-}
-```
+---
+
+### Документация API
+Каждый сервис предоставляет автоматическую интерактивную документацию Swagger UI:
+
+- `/docs`
+- `/redoc`
+
+---
+
+
+## Примечание
+
+Проект предназначен для учебных целей.
